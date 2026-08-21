@@ -39,23 +39,29 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" onerror="window.__HT_LOAD_ERR='React failed to load from unpkg.com'"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" onerror="window.__HT_LOAD_ERR='ReactDOM failed to load from unpkg.com'"></script>
 <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js" onerror="window.__HT_LOAD_ERR='Babel failed to load from unpkg.com'"></script>
-<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://cdn.tailwindcss.com/3.4.16" onerror="window.__HT_LOAD_ERR='Tailwind failed to load from cdn.tailwindcss.com'"></script>
 <script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'system-ui', 'sans-serif'] },
-        keyframes: {
-          slideUp: { '0%': { transform: 'translateY(16px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
-          pop: { '0%': { transform: 'scale(0.85)' }, '100%': { transform: 'scale(1)' } }
-        },
-        animation: {
-          'slide-up': 'slideUp .25s ease-out',
-          'pop': 'pop .2s cubic-bezier(0.34,1.56,0.64,1)'
+  // Guarded: a Tailwind load failure shouldn't be able to take the rest of the app down
+  // with it (styling would be degraded, but the app itself should still mount and work).
+  try {
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'system-ui', 'sans-serif'] },
+          keyframes: {
+            slideUp: { '0%': { transform: 'translateY(16px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+            pop: { '0%': { transform: 'scale(0.85)' }, '100%': { transform: 'scale(1)' } }
+          },
+          animation: {
+            'slide-up': 'slideUp .25s ease-out',
+            'pop': 'pop .2s cubic-bezier(0.34,1.56,0.64,1)'
+          }
         }
       }
-    }
-  };
+    };
+  } catch (e) {
+    window.__HT_LOAD_ERR = 'Tailwind config failed: ' + e.message;
+  }
 </script>
 
 <script id="ht-core">
@@ -1472,15 +1478,29 @@
     // from a CDN, then in-browser transforming the JSX, all on a phone CPU/connection) — so
     // poll for a while rather than giving up after a short fixed delay. Only show the
     // failure screen once we're confident it's actually stuck, not just slow.
-    var elapsed = 0, checkEvery = 500, giveUpAfter = 15000;
+    var elapsed = 0, checkEvery = 500, giveUpAfter = 25000;
     var poll = setInterval(function () {
       elapsed += checkEvery;
       if (window.__HT_MOUNTED) { clearInterval(poll); return; }
       if (elapsed >= giveUpAfter) {
         clearInterval(poll);
         var root = document.getElementById('root');
-        var reason = window.__HT_LOAD_ERR ? ('<p style="font-size:12px;max-width:280px;color:#71717a;">(' + window.__HT_LOAD_ERR + ')</p>') : '';
-        if (root) root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:24px;text-align:center;color:#a1a1aa;background:#09090b;"><p style="font-size:16px;font-weight:600;color:#e4e4e7;">Couldn\'t load the app</p><p style="font-size:13px;max-width:280px;">Check your internet connection, then tap below to try again. If you have an ad/content blocker enabled in Safari, try turning it off for this site.</p>' + reason + '<button onclick="location.reload()" style="margin-top:8px;padding:10px 20px;border-radius:12px;background:#8b5cf6;color:#fff;font-size:14px;font-weight:600;border:none;">Reload</button></div>';
+        // Don't just rely on error events firing (a hung/soft-blocked request, or a
+        // redacted cross-origin error, may never trigger one) — directly check which
+        // dependencies actually made it onto the page, so a genuine failure is
+        // diagnosable instead of a dead end.
+        var checklist = [
+          ['React', typeof window.React !== 'undefined'],
+          ['ReactDOM', typeof window.ReactDOM !== 'undefined'],
+          ['Babel', typeof window.Babel !== 'undefined'],
+          ['Tailwind', typeof window.tailwind !== 'undefined'],
+          ['App core (HT)', typeof window.HT !== 'undefined']
+        ];
+        var checklistHtml = checklist.map(function (c) {
+          return '<span style="color:' + (c[1] ? '#34d399' : '#f87171') + '">' + (c[1] ? '✓' : '✗') + ' ' + c[0] + '</span>';
+        }).join('<br/>');
+        var reason = window.__HT_LOAD_ERR ? ('<p style="font-size:12px;max-width:280px;color:#71717a;">Error: ' + window.__HT_LOAD_ERR + '</p>') : '';
+        if (root) root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:24px;text-align:center;color:#a1a1aa;background:#09090b;"><p style="font-size:16px;font-weight:600;color:#e4e4e7;">Couldn\'t load the app</p><p style="font-size:13px;max-width:280px;">Check your internet connection, then tap below to try again.</p>' + reason + '<div style="margin-top:6px;font-size:12px;line-height:1.7;font-family:monospace;">' + checklistHtml + '</div><button onclick="location.reload()" style="margin-top:14px;padding:10px 20px;border-radius:12px;background:#8b5cf6;color:#fff;font-size:14px;font-weight:600;border:none;">Reload</button></div>';
       }
     }, checkEvery);
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
