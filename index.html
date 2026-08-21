@@ -26,9 +26,9 @@
 <body>
 <div id="root"><div id="splash"><div class="dot"></div><div style="font-size:13px;color:#71717a;">Loading Habit Tracker…</div></div></div>
 
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" onerror="window.__HT_LOAD_ERR='React failed to load from unpkg.com'"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" onerror="window.__HT_LOAD_ERR='ReactDOM failed to load from unpkg.com'"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js" onerror="window.__HT_LOAD_ERR='Babel failed to load from unpkg.com'"></script>
 <script src="https://cdn.tailwindcss.com/3.4.16"></script>
 <script>
   tailwind.config = {
@@ -1458,12 +1458,21 @@
 
 <script>
   window.addEventListener('load', function () {
-    setTimeout(function () {
-      if (!window.__HT_MOUNTED) {
+    // Mobile-first-load can genuinely take several seconds (downloading React/ReactDOM/Babel
+    // from a CDN, then in-browser transforming the JSX, all on a phone CPU/connection) — so
+    // poll for a while rather than giving up after a short fixed delay. Only show the
+    // failure screen once we're confident it's actually stuck, not just slow.
+    var elapsed = 0, checkEvery = 500, giveUpAfter = 15000;
+    var poll = setInterval(function () {
+      elapsed += checkEvery;
+      if (window.__HT_MOUNTED) { clearInterval(poll); return; }
+      if (elapsed >= giveUpAfter) {
+        clearInterval(poll);
         var root = document.getElementById('root');
-        if (root) root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:24px;text-align:center;color:#a1a1aa;background:#09090b;"><p style="font-size:16px;font-weight:600;color:#e4e4e7;">Couldn\'t load the app</p><p style="font-size:13px;max-width:280px;">Check your internet connection and reload — this app needs to download some resources the first time.</p></div>';
+        var reason = window.__HT_LOAD_ERR ? ('<p style="font-size:12px;max-width:280px;color:#71717a;">(' + window.__HT_LOAD_ERR + ')</p>') : '';
+        if (root) root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:24px;text-align:center;color:#a1a1aa;background:#09090b;"><p style="font-size:16px;font-weight:600;color:#e4e4e7;">Couldn\'t load the app</p><p style="font-size:13px;max-width:280px;">Check your internet connection, then tap below to try again. If you have an ad/content blocker enabled in Safari, try turning it off for this site.</p>' + reason + '<button onclick="location.reload()" style="margin-top:8px;padding:10px 20px;border-radius:12px;background:#8b5cf6;color:#fff;font-size:14px;font-weight:600;border:none;">Reload</button></div>';
       }
-    }, 4000);
+    }, checkEvery);
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js').catch(function () {});
     }
