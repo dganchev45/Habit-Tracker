@@ -676,7 +676,7 @@
 })();
 </script>
 
-<script type="text/babel" data-presets="react" data-type="script">
+<script type="text/plain" id="ht-app-src">
 (function () {
   'use strict';
   var HT = window.HT;
@@ -1470,6 +1470,21 @@
   root.render(<App />);
   window.__HT_MOUNTED = true;
 })();
+</script>
+
+<script>
+  // Babel Standalone's own automatic "scan the page for <script type=text/babel>" behavior
+  // (transformScriptTags) is opaque about failures — it can catch and silently swallow a
+  // transform/eval error internally without ever surfacing it as a page-level error, which
+  // makes a real failure undiagnosable. Driving the transform ourselves gives us the exact
+  // same result but with our own try/catch around it, so any failure is actually visible.
+  try {
+    var __htSrc = document.getElementById('ht-app-src').textContent;
+    var __htOut = Babel.transform(__htSrc, { presets: ['react'] }).code;
+    (0, eval)(__htOut);
+  } catch (e) {
+    window.__HT_LOAD_ERR = 'App failed to run: ' + e.message + (e.stack ? ' — ' + String(e.stack).split('\n').slice(0, 2).join(' | ') : '');
+  }
 </script>
 
 <script>
