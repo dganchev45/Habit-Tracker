@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habit-tracker-v1';
+const CACHE_NAME = 'habit-tracker-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -22,23 +22,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-first: always prefer a fresh fetch (so a deployed fix is never blocked by a
+// stale cache), and only fall back to the cache when the network genuinely fails (offline).
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req, req.mode === 'navigate' ? undefined : { mode: 'no-cors' })
-        .then((res) => {
-          const isOk = res && (res.status === 200 || res.type === 'opaque');
-          if (isOk) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(req, req.mode === 'navigate' ? undefined : { mode: 'no-cors' })
+      .then((res) => {
+        const isOk = res && (res.status === 200 || res.type === 'opaque');
+        if (isOk) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });

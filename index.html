@@ -26,6 +26,16 @@
 <body>
 <div id="root"><div id="splash"><div class="dot"></div><div style="font-size:13px;color:#71717a;">Loading Habit Tracker…</div></div></div>
 
+<script>
+  // Catches genuine runtime/parse errors anywhere in the page (as opposed to a script tag
+  // simply failing to fetch, which the per-tag onerror handlers below cover) so a real
+  // failure is diagnosable from the phone itself instead of just guessing.
+  window.addEventListener('error', function (e) {
+    if (!window.__HT_LOAD_ERR) {
+      window.__HT_LOAD_ERR = (e && e.message) ? ('Script error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')) : 'Unknown script error';
+    }
+  });
+</script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" onerror="window.__HT_LOAD_ERR='React failed to load from unpkg.com'"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" onerror="window.__HT_LOAD_ERR='ReactDOM failed to load from unpkg.com'"></script>
 <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js" onerror="window.__HT_LOAD_ERR='Babel failed to load from unpkg.com'"></script>
